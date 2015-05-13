@@ -160,6 +160,13 @@ bool Squad::needsToRegroup()
 		return false;
 	}
 
+	int switchTime = 100;
+	// we should not attack unless 5 seconds have passed since a retreat
+	if (lastRetreatSwitchVal == true && (BWAPI::Broodwar->getFrameCount() - lastRetreatSwitch < switchTime))
+	{
+		regroupStatus = std::string("\x04 Retreat - simulation predicts defeat");
+		return true;
+	}
 
 	BWAPI::UnitInterface* unitClosest = unitClosestToEnemy();
 
@@ -170,27 +177,6 @@ bool Squad::needsToRegroup()
 	}
 
     SparCraft::ScoreType score = 0;
-	int SPARCRAFTscore = 0;
-
-	//which one to use?
-	if (!Options::Modules::USING_COMBAT_PREDICTOR)
-	{
-		//do the SparCraft Simulation!
-		CombatSimulation sim;
-
-		// special case with zealots vs. zerglings. combat simulation favours zerglings due to no unit collisions, check to see if we have 1/3 zealots
-		if (sim.checkZealotVsZergling(unitClosest->getPosition(), Options::Micro::COMBAT_REGROUP_RADIUS + InformationManager::Instance().lastFrameRegroup * 300))
-		{
-			regroupStatus = std::string("\x04 Attack - Zealot vs. Zergling - 1/3 condition met!");
-			return false;
-		}
-
-		sim.setCombatUnits(unitClosest->getPosition(), Options::Micro::COMBAT_REGROUP_RADIUS + InformationManager::Instance().lastFrameRegroup * 300);
-		SPARCRAFTscore = sim.simulateCombat();
-
-		score = SPARCRAFTscore;
-	}
-
 
     if (Options::Modules::USING_COMBAT_PREDICTOR)
     {
@@ -307,7 +293,7 @@ bool Squad::needsToRegroup()
 			}
 
 			sim.setCombatUnits(unitClosest->getPosition(), Options::Micro::COMBAT_REGROUP_RADIUS + InformationManager::Instance().lastFrameRegroup * 300);
-			SPARCRAFTscore = sim.simulateCombat();
+			SparCraft::ScoreType SPARCRAFTscore = sim.simulateCombat();
 
 			//save combat, will have to update every frame
 			Combat newCombat(ourCombatUnits, enemyCombatUnits, IhaveOBS, oppHasOBS);
@@ -319,6 +305,21 @@ bool Squad::needsToRegroup()
 			}
 		}
     }
+	else
+	{
+		//do the SparCraft Simulation!
+		CombatSimulation sim;
+
+		// special case with zealots vs. zerglings. combat simulation favours zerglings due to no unit collisions, check to see if we have 1/3 zealots
+		if (sim.checkZealotVsZergling(unitClosest->getPosition(), Options::Micro::COMBAT_REGROUP_RADIUS + InformationManager::Instance().lastFrameRegroup * 300))
+		{
+			regroupStatus = std::string("\x04 Attack - Zealot vs. Zergling - 1/3 condition met!");
+			return false;
+		}
+
+		sim.setCombatUnits(unitClosest->getPosition(), Options::Micro::COMBAT_REGROUP_RADIUS + InformationManager::Instance().lastFrameRegroup * 300);
+		score = sim.simulateCombat();
+	}
 
 
 	// if we are DT rushing and we haven't lost a DT yet, no retreat!
@@ -331,24 +332,9 @@ bool Squad::needsToRegroup()
 
 
     bool retreat = score < 0;
-    int switchTime = 100;
-    bool waiting = false;
 
-    // we should not attack unless 5 seconds have passed since a retreat
-    if (retreat != lastRetreatSwitchVal)
-    {
-        if (retreat == false && (BWAPI::Broodwar->getFrameCount() - lastRetreatSwitch < switchTime))
-        {
-            waiting = true;
-            retreat = lastRetreatSwitchVal;
-        }
-        else
-        {
-            waiting = false;
-            lastRetreatSwitch = BWAPI::Broodwar->getFrameCount();
-            lastRetreatSwitchVal = retreat;
-        }
-    }
+	lastRetreatSwitch = BWAPI::Broodwar->getFrameCount();
+	lastRetreatSwitchVal = retreat;
 	
 	if (retreat)
 	{
