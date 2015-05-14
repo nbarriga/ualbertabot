@@ -31,7 +31,7 @@ void HLManager::update()
 	//	firstRun = false;
 
 		static int cumulativeSearchTime = 0;
-		if (cumulativeSearchTime>39000)
+		if (cumulativeSearchTime>33000)
 		{
 			BWAPI::Broodwar->printf("Too much time searching, skipping HL search");
 			Logger::LogAppendToFile(UAB_LOGFILE, "\nToo much time searching, skipping HL search");
@@ -39,11 +39,11 @@ void HLManager::update()
 
 			return;
 		}
-		else if (cumulativeSearchTime > 36000)
+		else if (cumulativeSearchTime > 30000)
 		{
-			BWAPI::Broodwar->printf("Too much time searching, short HL search: %d[ms]", 42000 - cumulativeSearchTime);
-			Logger::LogAppendToFile(UAB_LOGFILE, "\nToo much time searching, short HL search: %d[ms]", 42000 - cumulativeSearchTime);
-			cumulativeSearchTime+=_search.search(42000 - cumulativeSearchTime, 10000, 40);
+			BWAPI::Broodwar->printf("Too much time searching, short HL search: %d[ms]", 35000 - cumulativeSearchTime);
+			Logger::LogAppendToFile(UAB_LOGFILE, "\nToo much time searching, short HL search: %d[ms]", 35000 - cumulativeSearchTime);
+			cumulativeSearchTime+=_search.search(35000 - cumulativeSearchTime, 10000, 40);
 		}
 		else
 		{

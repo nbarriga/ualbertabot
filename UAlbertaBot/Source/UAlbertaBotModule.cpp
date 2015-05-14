@@ -13,6 +13,7 @@
 #include "Common.h"
 #include "UAlbertaBotModule.h"
 #include "CombatPredictor.h"
+#include "HLManager.h"
 
 using namespace UAlbertaBot;
 
@@ -82,6 +83,7 @@ void UAlbertaBotModule::onStart()
 	if (Options::Modules::USING_HIGH_LEVEL_SEARCH)
 	{
 		BWAPI::Broodwar->enableFlag(BWAPI::Flag::CompleteMapInformation);
+		HLManager::Instance();
 	}
 
 }
