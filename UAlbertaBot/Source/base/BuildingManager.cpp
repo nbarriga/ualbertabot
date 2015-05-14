@@ -86,8 +86,11 @@ void BuildingManager::assignWorkersToUnassignedBuildings()
 		}
 
         // grab a worker unit from WorkerManager which is closest to this final position
-		BWAPI::UnitInterface* workerToAssign = WorkerManager::Instance().getBuilder(b);
-        
+		BWAPI::UnitInterface* workerToAssign = b.builderUnit==NULL?
+			WorkerManager::Instance().getBuilder(b):
+			b.builderUnit;
+
+
 		// if the worker exists
 		if (workerToAssign) 
         {
@@ -101,7 +104,7 @@ void BuildingManager::assignWorkersToUnassignedBuildings()
 			b.builderUnit = workerToAssign;
 
 			// re-search for a building location with the builder unit ignored for space
-            BWAPI::TilePosition testLocation = getBuildingLocation(b);
+			BWAPI::TilePosition testLocation = getBuildingLocation(b);
 
 			// hopefully this will not blow up
 			if (!testLocation.isValid())
@@ -137,25 +140,8 @@ BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b)
 	if (b.type == BWAPI::UnitTypes::Protoss_Pylon && (numPylons < 3))
 	{
         // try to get a spot for this building in our starting region
-		BWAPI::TilePosition posInRegion = BuildingPlacer::Instance().getBuildLocationNear(b, 4, true);
+		return BuildingPlacer::Instance().getBuildLocationNear(b, 4, true);
 		
-        // if didn't find a place in our region
-        if (posInRegion == BWAPI::TilePositions::None)
-        {
-			// otherwise find a place not in our region
-			return BuildingPlacer::Instance().getBuildLocationNear(b, 4, false);
-
-        }
-		//timed out
-		else if (posInRegion == BWAPI::TilePositions::Invalid)
-		{
-			return BWAPI::TilePositions::None;
-		}
-        else
-        {
-			// use it
-			return posInRegion;
-        }
 	}
 	// every other type of building
 	else
@@ -182,25 +168,9 @@ BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b)
 			// whether or not we want the distance to be horizontal only
             bool horizontalOnly = b.type == BWAPI::UnitTypes::Protoss_Citadel_of_Adun ? true : false;
 
-			// get a position within our region
-			BWAPI::TilePosition posInRegion = BuildingPlacer::Instance().getBuildLocationNear(b, distance, true,  horizontalOnly);
+			// get a position within our region if possible
+			return BuildingPlacer::Instance().getBuildLocationNear(b, distance, true,  horizontalOnly);
 
-            // if we didn't find a place in our region
-            if (posInRegion == BWAPI::TilePositions::None)
-            {
-				// just find a position somewhere
-				return BuildingPlacer::Instance().getBuildLocationNear(b, distance, false, horizontalOnly);
-            }
-			//timed out
-			else if (posInRegion == BWAPI::TilePositions::Invalid)
-			{
-				return BWAPI::TilePositions::None;
-			}
-            else
-            {
-				// use it
-				return posInRegion;
-            }
 		}
 	}
 

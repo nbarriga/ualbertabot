@@ -216,32 +216,73 @@ bool BuildingPlacer::canBuildHereWithSpace(BWAPI::TilePosition position, const B
 
 BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int buildDist, bool inRegionPriority, bool horizontalOnly) const
 {
+	static bool lastTimeout = false;
+	static Building lastBuilding;
+	static int lastBuildDist;
+	static bool lastInRegionPriority;
+	static bool lastHorizontalOnly;
+	static int lastLength, lastJ, lastDx, lastDy;
+	static bool lastFirst;
+	static BWAPI::TilePosition lastCandidatePos;
+	int length = 1;
+	int j = 0;
+	bool first = true;
+	int dx = 0;
+	int dy = 1;
+	BWAPI::TilePosition candidatePos=BWAPI::TilePositions::None;
+
+	if (lastTimeout && 			
+		lastBuilding.type == b.type && 
+		lastBuilding.desiredPosition==b.desiredPosition&& 
+		lastBuilding.builderUnit==b.builderUnit&&
+		lastBuildDist == buildDist&&
+		lastInRegionPriority == inRegionPriority&&
+		lastHorizontalOnly == horizontalOnly)
+	{
+		length = lastLength;
+		j = lastJ;
+		first = lastFirst;
+		dx = lastDx;
+		dy = lastDy;
+		candidatePos = lastCandidatePos;
+
+		BWAPI::Broodwar->printf("Building Placer for building %s resuming...",b.type.getName().c_str(),length);
+	}
+
 	//returns a valid build location near the specified tile position.
 	//searches outward in a spiral.
 	int x      = b.desiredPosition.x;
 	int y      = b.desiredPosition.y;
-	int length = 1;
-	int j      = 0;
-	bool first = true;
-	int dx     = 0;
-	int dy     = 1;
+
+
 
     SparCraft::Timer t;
     t.start();
     int iter = 0;
-    int buildingPlacerTimeLimit = 2000;
+    int buildingPlacerTimeLimit = 35;
 	// my starting region
 	BWTA::Region * myRegion = BWTA::getRegion(BWTA::getStartLocation(BWAPI::Broodwar->self())->getTilePosition());
 
 	while (length < BWAPI::Broodwar->mapWidth()) //We'll ride the spiral to the end
 	{
+
         if (t.getElapsedTimeInMilliSec() > buildingPlacerTimeLimit)
         {
             if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
             {
                 BWAPI::Broodwar->printf("Building Placer Timed Out %d ms", buildingPlacerTimeLimit);
             }
-
+			lastTimeout = true;
+			lastBuilding = b;
+			lastBuildDist = buildDist;
+			lastInRegionPriority = inRegionPriority;
+			lastHorizontalOnly = horizontalOnly;
+			lastLength = length;
+			lastJ = j;
+			lastFirst = first;
+			lastDx = dx;
+			lastDy = dy;
+			lastCandidatePos = candidatePos;
             return BWAPI::TilePositions::Invalid;//use a different return value for timeout than not found
         }
 
@@ -273,7 +314,12 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 						}
 
 						// return that position
+						lastTimeout = false;
 						return BWAPI::TilePosition(x, y);
+					}
+					else if (!candidatePos.isValid())//save an out of region position as candidate
+					{
+						candidatePos = BWAPI::TilePosition(x, y);
 					}
 				}
 				// otherwise priority is not set for this building
@@ -283,7 +329,7 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 					{
 						//BWAPI::Broodwar->printf("Building Placer Took %lf ms", t.getElapsedTimeInMilliSec());
 					}
-
+					lastTimeout = false;
 					return BWAPI::TilePosition(x, y);
 				}
 			}
@@ -302,7 +348,9 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 
 			//Spiral out. Keep going.
 			if (!first)
+			{
 				length++; //increment step counter if needed
+			}
 
 			//first=true for every other turn so we spiral out at the right rate
 			first =! first;
@@ -321,8 +369,8 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 		}
 		//Spiral out. Keep going.
 	}
-
-	return  BWAPI::TilePositions::None;
+	lastTimeout = false;
+	return  candidatePos;
 }
 
 bool BuildingPlacer::tileOverlapsBaseLocation(BWAPI::TilePosition tile, BWAPI::UnitType type) const
