@@ -100,10 +100,10 @@ void ProductionManager::setSearchGoal(MetaPairVector & goal)
 	searchGoal = goal;
 }
 
-void ProductionManager::update() 
+void ProductionManager::update(int timeLimitMS)
 {
 	// check the queue for stuff we can build
-	manageBuildOrderQueue();
+	manageBuildOrderQueue(timeLimitMS);
 
 	if ((queue.size() == 0) && Options::Modules::USING_BUILD_ORDER_DEMO)
 	{
@@ -172,14 +172,15 @@ void ProductionManager::onUnitDestroy(BWAPI::UnitInterface* unit)
 	}
 }
 
-void ProductionManager::manageBuildOrderQueue() 
+void ProductionManager::manageBuildOrderQueue(int timeLimitMS)
 {
 	// if there is nothing in the queue, oh well
 	if (queue.isEmpty()) 
 	{
 		return;
 	}
-
+	SparCraft::Timer t;
+	t.start();
 	// the current item to be used
 	BuildOrderItem & currentItem = queue.getHighestPriorityItem();
 
@@ -209,7 +210,7 @@ void ProductionManager::manageBuildOrderQueue()
 			producer = WorkerManager::Instance().getBuilder(b, false);
 
 			// predict the worker movement to that building location
-			predictWorkerMovement(b);
+			predictWorkerMovement(b, timeLimitMS - t.getElapsedTimeInMilliSec());
 		}
 
 		// if we can make the current item
@@ -474,15 +475,24 @@ bool ProductionManager::detectBuildOrderDeadlock()
 
 // When the next item in the queue is a building, this checks to see if we should move to it
 // This function is here as it needs to access prodction manager's reserved resources info
-void ProductionManager::predictWorkerMovement(const Building & b)
+void ProductionManager::predictWorkerMovement(const Building & b, int timeLimitMS)
 {
 	// get a possible building location for the building
 	if (!haveLocationForThisBuilding)
 	{
-		predictedTilePosition = BuildingManager::Instance().getBuildingLocation(b);
+		try
+		{
+			predictedTilePosition = BuildingManager::Instance().getBuildingLocation(b, timeLimitMS); 
+		}
+		catch (std::runtime_error &)
+		{
+			//Logger::LogAppendToFile(UAB_LOGFILE, "Timed out in predict movement: %s frame:%d\n", e.what(),
+			//	BWAPI::Broodwar->getFrameCount());
+			return;
+		}
 	}
 
-	if (predictedTilePosition != BWAPI::TilePositions::None)
+	if (predictedTilePosition.isValid())
 	{
 		haveLocationForThisBuilding		= true;
 	}

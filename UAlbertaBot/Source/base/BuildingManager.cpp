@@ -14,7 +14,7 @@ BuildingManager::BuildingManager()
 }
 
 // gets called every frame from GameCommander
-void BuildingManager::update() 
+void BuildingManager::update(int timeLimitMS)
 {
 	// Step through building logic, issue orders, manage data as necessary
 	//drawBuildingInformation(340, 50);
@@ -23,7 +23,7 @@ void BuildingManager::update()
 	validateWorkersAndBuildings();	
 
 	// assign workers to the unassigned buildings and label them 'planned'
-	assignWorkersToUnassignedBuildings();
+	assignWorkersToUnassignedBuildings(timeLimitMS);
 
 	// for each planned building, if the worker isn't constructing, send the command
 	constructAssignedBuildings();
@@ -69,8 +69,10 @@ void BuildingManager::validateWorkersAndBuildings()
 }
 
 // STEP 2: ASSIGN WORKERS TO BUILDINGS WITHOUT THEM
-void BuildingManager::assignWorkersToUnassignedBuildings() 
+void BuildingManager::assignWorkersToUnassignedBuildings(int timeLimitMS)
 {
+	SparCraft::Timer t;
+	t.start();
 	// for each building that doesn't have a builder, assign one
 	buildingData.begin(ConstructionData::Unassigned);
 	while (buildingData.hasNextBuilding(ConstructionData::Unassigned)) 
@@ -104,10 +106,20 @@ void BuildingManager::assignWorkersToUnassignedBuildings()
 			b.builderUnit = workerToAssign;
 
 			// re-search for a building location with the builder unit ignored for space
-			BWAPI::TilePosition testLocation = getBuildingLocation(b);
+			BWAPI::TilePosition testLocation;
+			try
+			{
+				testLocation = getBuildingLocation(b, timeLimitMS - t.getElapsedTimeInMilliSec());
+			}
+			catch (std::runtime_error &)
+			{
+				//Logger::LogAppendToFile(UAB_LOGFILE, "Timed out in assign worker: %s frame: %d\n", e.what(),
+				//	BWAPI::Broodwar->getFrameCount());
+				break;
+			}
 
 			// hopefully this will not blow up
-			if (!testLocation.isValid())
+			if (!testLocation.isValid())// no legal position
 			{
 				continue;
 			}
@@ -127,9 +139,9 @@ void BuildingManager::assignWorkersToUnassignedBuildings()
 	}
 }
 
-BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b)
+BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b, int timeLimitMS)
 {
-	int numPylons = BWAPI::Broodwar->self()->completedUnitCount(BWAPI::UnitTypes::Protoss_Pylon);
+	int numPylons = BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Protoss_Pylon);
 
 	if (b.type.isRefinery())
 	{
@@ -137,10 +149,10 @@ BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b)
 	}
 
 	// special case for early pylons
-	if (b.type == BWAPI::UnitTypes::Protoss_Pylon && (numPylons < 3))
+	if (b.type == BWAPI::UnitTypes::Protoss_Pylon && ((numPylons < 3) || (numPylons > 8)&&(numPylons % 3 == 0)))
 	{
         // try to get a spot for this building in our starting region
-		return BuildingPlacer::Instance().getBuildLocationNear(b, 4, true);
+		return BuildingPlacer::Instance().getBuildLocationNear(b, 4, timeLimitMS, true, false);
 		
 	}
 	// every other type of building
@@ -169,7 +181,7 @@ BWAPI::TilePosition BuildingManager::getBuildingLocation(const Building & b)
             bool horizontalOnly = b.type == BWAPI::UnitTypes::Protoss_Citadel_of_Adun ? true : false;
 
 			// get a position within our region if possible
-			return BuildingPlacer::Instance().getBuildLocationNear(b, distance, true,  horizontalOnly);
+			return BuildingPlacer::Instance().getBuildLocationNear(b, distance, timeLimitMS, true, horizontalOnly);
 
 		}
 	}

@@ -54,10 +54,10 @@ class ProductionManager
 	bool						meetsReservedResources(MetaType type);
 	void						setBuildOrder(const std::vector<MetaType> & buildOrder);
 	void						createMetaType(BWAPI::UnitInterface* producer, MetaType type);
-	void						manageBuildOrderQueue();
+	void						manageBuildOrderQueue(int timeLimitMS);
 	void						performCommand(BWAPI::UnitCommandType t);
 	bool						canMakeNow(BWAPI::UnitInterface* producer, MetaType t);
-	void						predictWorkerMovement(const Building & b);
+	void						predictWorkerMovement(const Building & b, int timeLimitMS);
 
 	bool						detectBuildOrderDeadlock();
 
@@ -69,7 +69,7 @@ public:
 	static ProductionManager &	Instance();
 
 	void						drawQueueInformation(std::map<BWAPI::UnitType, int> & numUnits, int x, int y, int index);
-	void						update();
+	void						update(int timeLimitMS);
 
 	void						onGameEnd();
 	void						onUnitMorph(BWAPI::UnitInterface* unit);

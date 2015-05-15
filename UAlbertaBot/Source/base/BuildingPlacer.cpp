@@ -214,85 +214,97 @@ bool BuildingPlacer::canBuildHereWithSpace(BWAPI::TilePosition position, const B
 	return true;
 }
 
-BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int buildDist, bool inRegionPriority, bool horizontalOnly) const
+BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int buildDist, int timeLimitMS, bool inRegionPriority, bool horizontalOnly) const
 {
-	static bool lastTimeout = false;
-	static Building lastBuilding;
-	static int lastBuildDist;
-	static bool lastInRegionPriority;
-	static bool lastHorizontalOnly;
-	static int lastLength, lastJ, lastDx, lastDy;
-	static bool lastFirst;
-	static BWAPI::TilePosition lastCandidatePos;
-	int length = 1;
-	int j = 0;
-	bool first = true;
-	int dx = 0;
-	int dy = 1;
-	BWAPI::TilePosition candidatePos=BWAPI::TilePositions::None;
-
-	if (lastTimeout && 			
-		lastBuilding.type == b.type && 
-		lastBuilding.desiredPosition==b.desiredPosition&& 
-		lastBuilding.builderUnit==b.builderUnit&&
-		lastBuildDist == buildDist&&
-		lastInRegionPriority == inRegionPriority&&
-		lastHorizontalOnly == horizontalOnly)
+	struct SearchState{
+		int _length;
+		int _j;
+		bool _first;
+		int _dx;
+		int _dy;
+		int _x;
+		int _y;
+		bool _timeOut;
+		BWAPI::TilePosition _candidatePos;
+		SearchState(int length, int j, bool first, int dx, int dy, int x, int y, bool timeOut = false, BWAPI::TilePosition candidatePos = BWAPI::TilePositions::None) :
+			_length(length), _j(j), _first(first), _dx(dx), _dy(dy), _x(x), _y(y), _timeOut(timeOut), _candidatePos(candidatePos)
+		{}
+		SearchState() :_timeOut(false), _candidatePos(BWAPI::TilePositions::None)
+		{}
+	};
+	struct SearchParams{
+		Building _b;
+		int _buildDist;
+		bool _inRegionPriority;
+		bool _horizontalOnly;
+		SearchParams(const Building & b, int buildDist, bool inRegionPriority, bool horizontalOnly):
+			_b(b), _buildDist(buildDist), _inRegionPriority(inRegionPriority), _horizontalOnly(horizontalOnly)
+		{}
+		SearchParams()
+		{}
+		bool operator==(const SearchParams& other)
+		{
+			return _b.type == other._b.type &&
+				_b.desiredPosition == other._b.desiredPosition&&
+				_b.builderUnit == other._b.builderUnit&&
+				_buildDist == other._buildDist&&
+				_inRegionPriority == other._inRegionPriority&&
+				_horizontalOnly == other._horizontalOnly;
+		}
+	};
+	if (timeLimitMS <= 0)
 	{
-		length = lastLength;
-		j = lastJ;
-		first = lastFirst;
-		dx = lastDx;
-		dy = lastDy;
-		candidatePos = lastCandidatePos;
-
-		BWAPI::Broodwar->printf("Building Placer for building %s resuming...",b.type.getName().c_str(),length);
+		throw std::runtime_error("Building Placer not given any time: "+timeLimitMS);
 	}
+	static SearchState lastState;
+	static SearchParams lastParams;
+	SearchState state(1, 0, true, 0, 1, b.desiredPosition.x, b.desiredPosition.y);
+	SearchParams params(b, buildDist, inRegionPriority, horizontalOnly);
+	if (lastState._timeOut && lastParams == params)
+	{
+		state = lastState;
 
-	//returns a valid build location near the specified tile position.
-	//searches outward in a spiral.
-	int x      = b.desiredPosition.x;
-	int y      = b.desiredPosition.y;
-
-
+		//BWAPI::Broodwar->printf("Building Placer for building %s resuming... %d",b.type.getName().c_str(),state._length);
+		//Logger::LogAppendToFile(UAB_LOGFILE, "Building Placer for building %s resuming... %d\n", b.type.getName().c_str(), state._length);
+	}
 
     SparCraft::Timer t;
     t.start();
-    int iter = 0;
-    int buildingPlacerTimeLimit = 35;
 	// my starting region
-	BWTA::Region * myRegion = BWTA::getRegion(BWTA::getStartLocation(BWAPI::Broodwar->self())->getTilePosition());
-
-	while (length < BWAPI::Broodwar->mapWidth()) //We'll ride the spiral to the end
+	//BWTA::Region * myRegion = BWTA::getRegion(BWTA::getStartLocation(BWAPI::Broodwar->self())->getTilePosition());
+	BWTA::Region * myRegion = BWTA::getRegion(b.desiredPosition);
+	
+	//get max spiral size
+	int maxDist = 0;
+	for (auto point : myRegion->getPolygon())
 	{
-
-        if (t.getElapsedTimeInMilliSec() > buildingPlacerTimeLimit)
+		int radius = std::ceil((BWAPI::TilePosition(point) - b.desiredPosition).getLength());
+		if (radius > maxDist)
+		{
+			maxDist = radius;
+		}
+	}
+	while (state._length < maxDist || (state._length <BWAPI::Broodwar->mapWidth() && state._candidatePos == BWAPI::TilePositions::None)) //We'll ride the spiral to the end
+	{
+		if (t.getElapsedTimeInMilliSec() > timeLimitMS)
         {
-            if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
+            if (Options::Debug::DRAW_UALBERTABOT_DEBUG && !state._timeOut)
             {
-                BWAPI::Broodwar->printf("Building Placer Timed Out %d ms", buildingPlacerTimeLimit);
+				//BWAPI::Broodwar->printf("Building Placer Timed Out at %d ms on building %s", timeLimitMS, b.type.getName().c_str());
+				//Logger::LogAppendToFile(UAB_LOGFILE, "Building Placer Timed Out at %d ms on building %s\n", timeLimitMS, b.type.getName().c_str());
             }
-			lastTimeout = true;
-			lastBuilding = b;
-			lastBuildDist = buildDist;
-			lastInRegionPriority = inRegionPriority;
-			lastHorizontalOnly = horizontalOnly;
-			lastLength = length;
-			lastJ = j;
-			lastFirst = first;
-			lastDx = dx;
-			lastDy = dy;
-			lastCandidatePos = candidatePos;
-            return BWAPI::TilePositions::Invalid;//use a different return value for timeout than not found
+			lastState = state;
+			lastState._timeOut = true; 
+			lastParams = params;
+			throw std::runtime_error("Building Placer Timed Out. State saved for resuming later.");
         }
 
 		//if we can build here, return this tile position
-		if (x >= 0 && x < BWAPI::Broodwar->mapWidth() && y >= 0 && y < BWAPI::Broodwar->mapHeight())
+		if (state._x >= 0 && state._x < BWAPI::Broodwar->mapWidth() && state._y >= 0 && state._y < BWAPI::Broodwar->mapHeight())
 		{
-            iter++;
             
 			// can we build this building at this location
-			bool canBuild					= this->canBuildHereWithSpace(BWAPI::TilePosition(x, y), b, buildDist, horizontalOnly);
+			bool canBuild = this->canBuildHereWithSpace(BWAPI::TilePosition(state._x, state._y), b, buildDist, horizontalOnly);
 
 			if (canBuild)
 			{
@@ -300,7 +312,7 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 				if (inRegionPriority)
 				{
 					// the region the build tile is in
-					BWTA::Region * tileRegion = BWTA::getRegion(BWAPI::TilePosition(x, y));
+					BWTA::Region * tileRegion = BWTA::getRegion(BWAPI::TilePosition(state._x, state._y));
 
 					// is the proposed tile in our region?
 					bool tileInRegion = (tileRegion == myRegion);
@@ -311,15 +323,23 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 						if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
 						{
 							//BWAPI::Broodwar->printf("Building Placer Took %lf ms", t.getElapsedTimeInMilliSec());
+							//BWAPI::Broodwar->printf("Building position found in region");
+							//Logger::LogAppendToFile(UAB_LOGFILE, "Building position found in region\n");
 						}
 
 						// return that position
-						lastTimeout = false;
-						return BWAPI::TilePosition(x, y);
+						lastState._timeOut = false;
+
+						return BWAPI::TilePosition(state._x, state._y);
 					}
-					else if (!candidatePos.isValid())//save an out of region position as candidate
+					else if (state._candidatePos==BWAPI::TilePositions::None)//save an out of region position as candidate
 					{
-						candidatePos = BWAPI::TilePosition(x, y);
+						if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
+						{
+							//BWAPI::Broodwar->printf("Saving position found not in region");
+							//Logger::LogAppendToFile(UAB_LOGFILE, "Saving position found not in region\n");
+						}
+						state._candidatePos = BWAPI::TilePosition(state._x, state._y);
 					}
 				}
 				// otherwise priority is not set for this building
@@ -328,49 +348,56 @@ BWAPI::TilePosition BuildingPlacer::getBuildLocationNear(const Building & b, int
 					if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
 					{
 						//BWAPI::Broodwar->printf("Building Placer Took %lf ms", t.getElapsedTimeInMilliSec());
+						//BWAPI::Broodwar->printf("Building position found not in region");
+						//Logger::LogAppendToFile(UAB_LOGFILE, "Building position found not in region\n");
 					}
-					lastTimeout = false;
-					return BWAPI::TilePosition(x, y);
+					lastState._timeOut = false;
+					return BWAPI::TilePosition(state._x, state._y);
 				}
 			}
 		}
 
 		//otherwise, move to another position
-		x = x + dx;
-		y = y + dy;
+		state._x = state._x + state._dx;
+		state._y = state._y + state._dy;
 
 		//count how many steps we take in this direction
-		j++;
-		if (j == length) //if we've reached the end, its time to turn
+		state._j++;
+		if (state._j == state._length) //if we've reached the end, its time to turn
 		{
 			//reset step counter
-			j = 0;
+			state._j = 0;
 
 			//Spiral out. Keep going.
-			if (!first)
+			if (!state._first)
 			{
-				length++; //increment step counter if needed
+				state._length++; //increment step counter if needed
 			}
 
 			//first=true for every other turn so we spiral out at the right rate
-			first =! first;
+			state._first = !state._first;
 
 			//turn counter clockwise 90 degrees:
-			if (dx == 0)
+			if (state._dx == 0)
 			{
-				dx = dy;
-				dy = 0;
+				state._dx = state._dy;
+				state._dy = 0;
 			}
 			else
 			{
-				dy = -dx;
-				dx = 0;
+				state._dy = -state._dx;
+				state._dx = 0;
 			}
 		}
 		//Spiral out. Keep going.
 	}
-	lastTimeout = false;
-	return  candidatePos;
+	lastState._timeOut = false;
+	if (Options::Debug::DRAW_UALBERTABOT_DEBUG)
+	{
+		//BWAPI::Broodwar->printf("Rode spiral out. Building %s position: %d %d", b.type.getName().c_str(), state._candidatePos.x, state._candidatePos.y);
+		//Logger::LogAppendToFile(UAB_LOGFILE, "Rode spiral out. Building %s position: %d %d\n", b.type.getName().c_str(),  state._candidatePos.x, state._candidatePos.y);
+	}
+	return  state._candidatePos;
 }
 
 bool BuildingPlacer::tileOverlapsBaseLocation(BWAPI::TilePosition tile, BWAPI::UnitType type) const

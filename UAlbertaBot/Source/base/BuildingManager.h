@@ -36,7 +36,7 @@ class BuildingManager {
 
 	// the update() functions
 	void						validateWorkersAndBuildings();		// STEP 1
-	void						assignWorkersToUnassignedBuildings();	// STEP 2
+	void						assignWorkersToUnassignedBuildings(int timeLimitMS);	// STEP 2
 	void						constructAssignedBuildings();			// STEP 3
 	void						checkForStartedConstruction();			// STEP 4
 	void						checkForDeadTerranBuilders();			// STEP 5
@@ -50,11 +50,11 @@ class BuildingManager {
 
 public:
 
-	void						update();
+	void						update(int timeLimitMS);
 	void						onUnitMorph(BWAPI::UnitInterface* unit);
 	void						onUnitDestroy(BWAPI::UnitInterface* unit);
 	void						addBuildingTask(BWAPI::UnitType type, BWAPI::TilePosition desiredLocation);
-	BWAPI::TilePosition			getBuildingLocation(const Building & b);
+	BWAPI::TilePosition			getBuildingLocation(const Building & b, int timeLimitMS = 0);
 
 	int							getReservedMinerals();
 	int							getReservedGas();
