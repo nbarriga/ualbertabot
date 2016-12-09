@@ -152,6 +152,27 @@ GameState::GameState(BWAPI::GameWrapper & game, BWAPI::PlayerInterface * self, c
 
                 _units.addCompletedBuilding(actionType, trainTime, constructing, addon, unit->getLarva().size());
 			}
+
+			//this else if is added by dmhamilt, and may be buggy
+			else if (unit->getType().isAddon())
+			{
+				FrameCountType  trainTime = unit->getRemainingTrainTime() + unit->getRemainingResearchTime() + unit->getRemainingUpgradeTime();
+				ActionType      constructing;
+
+				// if it's researching something, add it
+				if (unit->getRemainingResearchTime() > 0)
+				{
+					constructing = ActionType(unit->getTech());
+					_units.addActionInProgress(constructing, game->getFrameCount() + unit->getRemainingResearchTime(), false);
+				}
+				// if it's upgrading something, add it
+				else if (unit->getRemainingUpgradeTime() > 0)
+				{
+					constructing = ActionType(unit->getUpgrade());
+					_units.addActionInProgress(constructing, game->getFrameCount() + unit->getRemainingUpgradeTime(), false);
+				}
+			}
+
             // otherwise it is a non-building unit
             else
             {
