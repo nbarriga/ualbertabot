@@ -157,6 +157,26 @@ void ProductionManager::manageBuildOrderQueue()
 			break;
 		}
 
+		//D'Arcy Hamilton - if a tech is already researched, cull it
+		if (currentItem.metaType.isTech())
+		{
+			if (BWAPI::Broodwar->self()->hasResearched(currentItem.metaType.getTechType()))
+			{
+				_queue.removeCurrentHighestPriorityItem();
+				break;
+			}
+		}
+
+		//D'Arcy Hamilton - Don't build more of an upgrade than the max
+		if (currentItem.metaType.isUpgrade())
+		{
+			if (BWAPI::Broodwar->self()->getUpgradeLevel(currentItem.metaType.getUpgradeType()) == currentItem.metaType.getUpgradeType().maxRepeats())
+			{
+				_queue.removeCurrentHighestPriorityItem();
+				break;
+			}
+		}
+
 		// if the next item in the list is a building and we can't yet make it
         if (currentItem.metaType.isBuilding() && !(producer && canMake) && currentItem.metaType.whatBuilds().isWorker())
 		{
