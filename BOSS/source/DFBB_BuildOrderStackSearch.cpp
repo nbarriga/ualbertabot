@@ -241,6 +241,7 @@ SEARCH_BEGIN:
         // do the action as many times as legal to to 'repeat'
         CHILD_STATE = STATE;
         COMPLETED_REPS = 0;
+		REPETITIONS = 2;
         for (; COMPLETED_REPS < REPETITIONS; ++COMPLETED_REPS)
         {
             if (CHILD_STATE.isLegal(ACTION_TYPE))
