@@ -237,6 +237,8 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
         if (unit->getType() != producerType)                    { continue; }
         if (!unit->isCompleted())                               { continue; }
         if (unit->isTraining())                                 { continue; }
+		if (unit->isResearching())                                { continue; }
+		if (unit->isUpgrading())                                { continue; }
         if (unit->isLifted())                                   { continue; }
         if (!unit->isPowered())                                 { continue; }
 
