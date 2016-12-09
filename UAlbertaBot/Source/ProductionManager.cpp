@@ -259,6 +259,22 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
 
             bool isBlocked = false;
 
+			//  Some units from the terran faction need to be built at a building that has an addon
+			//  Added by D'Arcy Hamilton
+			if (t.getUnitType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Battlecruiser ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Dropship ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Science_Vessel ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Valkyrie)
+			{
+				if (unit->getAddon() == nullptr)
+				{
+					continue;
+				}
+
+			}
+
+
             // if the unit doesn't have space to build an addon, it can't make one
             BWAPI::TilePosition addonPosition(unit->getTilePosition().x + unit->getType().tileWidth(), unit->getTilePosition().y + unit->getType().tileHeight() - t.getUnitType().tileHeight());
             BWAPI::Broodwar->drawBoxMap(addonPosition.x*32, addonPosition.y*32, addonPosition.x*32 + 64, addonPosition.y*32 + 64, BWAPI::Colors::Red);
