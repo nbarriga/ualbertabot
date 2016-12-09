@@ -11,7 +11,7 @@ bool UnitUtil::IsCombatUnit(BWAPI::Unit unit)
     }
 
     // no workers or buildings allowed
-    if (unit && unit->getType().isWorker() || unit->getType().isBuilding())
+	if (unit && unit->getType().isWorker() || (unit->getType().isBuilding() && !(unit->getType() == BWAPI::UnitTypes::Terran_Comsat_Station)))
     {
         return false;
     }
@@ -20,6 +20,8 @@ bool UnitUtil::IsCombatUnit(BWAPI::Unit unit)
     if (unit->getType().canAttack() || 
         unit->getType() == BWAPI::UnitTypes::Terran_Medic ||
         unit->getType() == BWAPI::UnitTypes::Protoss_High_Templar ||
+		unit->getType() == BWAPI::UnitTypes::Terran_Science_Vessel ||
+		unit->getType() == BWAPI::UnitTypes::Terran_Comsat_Station ||
         unit->getType() == BWAPI::UnitTypes::Protoss_Observer ||
         unit->isFlying() && unit->getType().spaceProvided() > 0)
     {
