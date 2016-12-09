@@ -88,18 +88,30 @@ void BuildingManager::assignWorkersToUnassignedBuildings()
 
             b.builderUnit = workerToAssign;
 
-            BWAPI::TilePosition testLocation = getBuildingLocation(b);
-            if (!testLocation.isValid())
-            {
-                continue;
-            }
+			b.builderUnit = workerToAssign;
 
-            b.finalPosition = testLocation;
+			if (b.status == BuildingStatus::DeadWorker)
+			{
+				b.builderUnit->rightClick(b.buildingUnit);
+			}
+			else
+			{
+				BWAPI::TilePosition testLocation = getBuildingLocation(b);
 
-            // reserve this building's space
-            BuildingPlacer::Instance().reserveTiles(b.finalPosition,b.type.tileWidth(),b.type.tileHeight());
+				//D'Arcy Hamilton - things that return an invalid location never get taken out of the build rotation? Lets try it.
+				if (!testLocation.isValid())
+				{
+					//BWAPI::Broodwar->printf("Invalid build of %s atlocation: %d, %d",b.type.toString(), testLocation.x, testLocation.y);
+					removeBuildings({ b });//
+					continue;
+				}
 
-            b.status = BuildingStatus::Assigned;
+				b.finalPosition = testLocation;
+
+				// reserve this building's space
+				BuildingPlacer::Instance().reserveTiles(b.finalPosition, b.type.tileWidth(), b.type.tileHeight());
+			}
+			b.status = BuildingStatus::Assigned;
         }
     }
 }
@@ -221,7 +233,47 @@ void BuildingManager::checkForStartedConstruction()
 }
 
 // STEP 5: IF WE ARE TERRAN, THIS MATTERS, SO: LOL
-void BuildingManager::checkForDeadTerranBuilders() {}
+void BuildingManager::checkForDeadTerranBuilders() 
+{
+	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran){
+		std::vector<Building> toRemove;
+		for (auto & b : _buildings)
+		{
+
+			if (b.status == BuildingStatus::UnderConstruction)
+			{
+				if (b.builderUnit->getHitPoints() < 1){
+
+					//TODO: make following toggleable in config file.
+					//they cause the bot to cancel the build entirely when they lose a worker
+					//current code will replace workers until there are no workers left
+					//BWAPI::Broodwar->printf("I think my builder died");
+					//if (config::abandonbuildings == true)
+					//{
+					//toRemove.push_back(b);
+					//b.buildingUnit->cancelConstruction();
+					//}
+				    //else {
+					b.status = BuildingStatus::Unassigned;
+				    //}
+				}
+				else{
+					//BWAPI::Broodwar->printf("my builder lives!");
+				}
+			}
+			if (b.status == BuildingStatus::Assigned)
+			{
+
+				if (b.builderUnit->getHitPoints() < 1){ // A worker died while walking to the location. Abandon the order.
+					toRemove.push_back(b);
+					//BWAPI::Broodwar->printf("I think my builder died");
+				}
+			}
+		}
+		removeBuildings(toRemove);
+	}
+
+}
 
 // STEP 6: CHECK FOR COMPLETED BUILDINGS
 void BuildingManager::checkForCompletedBuildings()

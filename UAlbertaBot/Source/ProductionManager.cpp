@@ -157,6 +157,65 @@ void ProductionManager::manageBuildOrderQueue()
 			break;
 		}
 
+		//D'Arcy Hamilton - if a tech is already researched, cull it
+		if (currentItem.metaType.isTech())
+		{
+			if (BWAPI::Broodwar->self()->hasResearched(currentItem.metaType.getTechType()))
+			{
+				_queue.removeCurrentHighestPriorityItem();
+				break;
+			}
+		}
+
+		//D'Arcy Hamilton - Don't build more of an upgrade than the max
+		if (currentItem.metaType.isUpgrade())
+		{
+			if (BWAPI::Broodwar->self()->getUpgradeLevel(currentItem.metaType.getUpgradeType()) == currentItem.metaType.getUpgradeType().maxRepeats())
+			{
+				_queue.removeCurrentHighestPriorityItem();
+				break;
+			}
+		}
+
+		//if we try to build too many addons remove it
+		//by D'Arcy Hamilton
+		if (BWAPI::Broodwar->self()->getRace() = BWAPI::Races::Terran)
+		{
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Machine_Shop)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Factory) <= BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Machine_Shop))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Control_Tower)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Starport) <= BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Control_Tower))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Comsat_Station || currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Nuclear_Silo)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Command_Center) <= (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Nuclear_Silo + BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Comsat_Station))))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Covert_Ops || currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Physics_Lab)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Science_Facility) <= (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Covert_Ops + BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Physics_Lab))))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+		}
+
+
 		// if the next item in the list is a building and we can't yet make it
         if (currentItem.metaType.isBuilding() && !(producer && canMake) && currentItem.metaType.whatBuilds().isWorker())
 		{
@@ -217,6 +276,8 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
         if (unit->getType() != producerType)                    { continue; }
         if (!unit->isCompleted())                               { continue; }
         if (unit->isTraining())                                 { continue; }
+		if (unit->isResearching())                                { continue; }
+		if (unit->isUpgrading())                                { continue; }
         if (unit->isLifted())                                   { continue; }
         if (!unit->isPowered())                                 { continue; }
 
@@ -239,6 +300,22 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
 
             bool isBlocked = false;
 
+			//  Some units from the terran faction need to be built at a building that has an addon
+			//  Added by D'Arcy Hamilton
+			if (t.getUnitType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Battlecruiser ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Dropship ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Science_Vessel ||
+				t.getUnitType() == BWAPI::UnitTypes::Terran_Valkyrie)
+			{
+				if (unit->getAddon() == nullptr)
+				{
+					continue;
+				}
+
+			}
+
+
             // if the unit doesn't have space to build an addon, it can't make one
             BWAPI::TilePosition addonPosition(unit->getTilePosition().x + unit->getType().tileWidth(), unit->getTilePosition().y + unit->getType().tileHeight() - t.getUnitType().tileHeight());
             BWAPI::Broodwar->drawBoxMap(addonPosition.x*32, addonPosition.y*32, addonPosition.x*32 + 64, addonPosition.y*32 + 64, BWAPI::Colors::Red);
@@ -260,8 +337,8 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
                     BWAPI::Unitset uot = BWAPI::Broodwar->getUnitsOnTile(tilePos.x, tilePos.y);
                     if (uot.size() > 0 && !(uot.size() == 1 && *(uot.begin()) == unit))
                     {
-                        isBlocked = true;;
-                        BWAPI::Broodwar->drawBoxMap(tilePos.x*32, tilePos.y*32, tilePos.x*32 + 32, tilePos.y*32 + 32, BWAPI::Colors::Red);
+                        //isBlocked = true;;
+                        //BWAPI::Broodwar->drawBoxMap(tilePos.x*32, tilePos.y*32, tilePos.x*32 + 32, tilePos.y*32 + 32, BWAPI::Colors::Red);
                     }
                 }
             }

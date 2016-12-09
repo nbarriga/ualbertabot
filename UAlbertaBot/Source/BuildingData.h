@@ -7,7 +7,7 @@ namespace UAlbertaBot
 
 namespace BuildingStatus
 {
-    enum { Unassigned = 0, Assigned = 1, UnderConstruction = 2, Size = 3 };
+    enum { Unassigned = 0, Assigned = 1, UnderConstruction = 2, Size = 3, DeadWorker = 4 };
 }
 
 class Building 

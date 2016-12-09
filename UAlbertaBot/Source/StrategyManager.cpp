@@ -44,7 +44,9 @@ const BuildOrder & StrategyManager::getOpeningBookBuildOrder() const
 const bool StrategyManager::shouldExpandNow() const
 {
 	// if there is no place to expand to, we can't expand
-	if (MapTools::Instance().getNextExpansion() == BWAPI::TilePositions::None)
+	if (MapTools::Instance().getNextExpansion() == BWAPI::TilePositions::None ||
+		MapTools::Instance().getNextExpansion() == BWAPI::TilePositions::Invalid ||
+		MapTools::Instance().getNextExpansion() == BWAPI::TilePositions::Unknown)
 	{
         BWAPI::Broodwar->printf("No valid expansion location");
 		return false;
