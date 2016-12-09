@@ -284,7 +284,7 @@ bool BuildingPlacer::buildable(const Building & b,int x,int y) const
 
     for (auto & unit : BWAPI::Broodwar->getUnitsOnTile(x,y))
     {
-        if ((b.builderUnit != nullptr) && (unit != b.builderUnit))
+		if ((b.builderUnit != nullptr) && ((unit != b.builderUnit) && !b.type.isAddon()))
         {
             return false;
         }

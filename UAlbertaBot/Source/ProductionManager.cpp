@@ -296,8 +296,8 @@ BWAPI::Unit ProductionManager::getProducer(MetaType t, BWAPI::Position closestTo
                     BWAPI::Unitset uot = BWAPI::Broodwar->getUnitsOnTile(tilePos.x, tilePos.y);
                     if (uot.size() > 0 && !(uot.size() == 1 && *(uot.begin()) == unit))
                     {
-                        isBlocked = true;;
-                        BWAPI::Broodwar->drawBoxMap(tilePos.x*32, tilePos.y*32, tilePos.x*32 + 32, tilePos.y*32 + 32, BWAPI::Colors::Red);
+                        //isBlocked = true;;
+                        //BWAPI::Broodwar->drawBoxMap(tilePos.x*32, tilePos.y*32, tilePos.x*32 + 32, tilePos.y*32 + 32, BWAPI::Colors::Red);
                     }
                 }
             }
