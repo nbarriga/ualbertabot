@@ -90,11 +90,12 @@ int MapTools::getGroundDistance(BWAPI::Position origin,BWAPI::Position destinati
     if (_allMaps.find(destination) == _allMaps.end())
     {
         // if we have computed the opposite direction, we can use that too
-        if (_allMaps.find(origin) != _allMaps.end())
+		/*
+		if (_allMaps.find(origin) != _allMaps.end())
         {
             return _allMaps[origin][destination];
         }
-
+		*/
         // add the map and compute it
         _allMaps.insert(std::pair<BWAPI::Position,DistanceMap>(destination,DistanceMap()));
         computeDistance(_allMaps[destination],destination);
