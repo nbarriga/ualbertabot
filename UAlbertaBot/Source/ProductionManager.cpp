@@ -177,6 +177,45 @@ void ProductionManager::manageBuildOrderQueue()
 			}
 		}
 
+		//if we try to build too many addons remove it
+		//by D'Arcy Hamilton
+		if (BWAPI::Broodwar->self()->getRace() = BWAPI::Races::Terran)
+		{
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Machine_Shop)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Factory) <= BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Machine_Shop))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Control_Tower)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Starport) <= BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Control_Tower))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Comsat_Station || currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Nuclear_Silo)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Command_Center) <= (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Nuclear_Silo + BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Comsat_Station))))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+			if (currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Covert_Ops || currentItem.metaType.getUnitType() == BWAPI::UnitTypes::Terran_Physics_Lab)
+			{
+				if (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Science_Facility) <= (BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Covert_Ops + BWAPI::Broodwar->self()->allUnitCount(BWAPI::UnitTypes::Terran_Physics_Lab))))
+				{
+					_queue.removeCurrentHighestPriorityItem();
+					break;
+				}
+			}
+		}
+
+
 		// if the next item in the list is a building and we can't yet make it
         if (currentItem.metaType.isBuilding() && !(producer && canMake) && currentItem.metaType.whatBuilds().isWorker())
 		{
